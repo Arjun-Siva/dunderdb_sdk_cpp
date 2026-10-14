@@ -5,19 +5,19 @@ namespace dunderdb
     Message::Message(const std::initializer_list<Field> fields)
         : fields_(fields) {}
 
-    Message::Message(const std::initializer_list<Field> fields, const std::string& timestamp) :
+    Message::Message(const std::initializer_list<Field> fields, const std::chrono::system_clock::time_point timestamp) :
     fields_(fields) , timestamp_(timestamp) {}
 
     Message::Message(std::vector<Field> fields) : fields_(std::move(fields)) {}
 
-    Message::Message(std::vector<Field> fields, const std::string& timestamp) : fields_(std::move(fields)),
+    Message::Message(std::vector<Field> fields, const std::chrono::system_clock::time_point timestamp) : fields_(std::move(fields)),
         timestamp_(timestamp) {}
 
     void Message::add_field(Field field) {
         fields_.push_back(std::move(field));
     }
 
-    void Message::add_timestamp(const std::string& timestamp) {
+    void Message::add_timestamp(const std::chrono::system_clock::time_point timestamp) {
         timestamp_ = timestamp;
     }
 
@@ -25,7 +25,7 @@ namespace dunderdb
         return fields_;
     }
 
-    const std::string& Message::timestamp() const{
+    const std::chrono::system_clock::time_point& Message::timestamp() const{
         return timestamp_;
     }
 

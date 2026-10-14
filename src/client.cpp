@@ -3,6 +3,7 @@
 
 #include "dunderdb/client.h"
 
+#include "dunderdb/util.h"
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -119,7 +120,9 @@ namespace dunderdb
             static_cast<char*>(reply.data()),
             reply.size());
 
-        return Client::json_to_reply(json_reply);
+        Reply reply_obj = Client::json_to_reply(json_reply);
+        reply_obj.add_raw_json(std::move(json_reply));
+        return reply_obj;
     }
 
     std::string Client::message_to_json(const Message& message) {
@@ -208,7 +211,7 @@ namespace dunderdb
                         throw std::runtime_error("Invalid response: unsupported field type");
                     }
                 }
-                reply.add_row(Message{std::move(fields), timestamp});
+                reply.add_row(Message{std::move(fields), dunderdb::util::iso_string_to_time_point(timestamp)});
             } // end - row loop
         }
         return reply;
@@ -223,10 +226,10 @@ namespace dunderdb
         writer.String(query_request.service_name().c_str());
 
         writer.Key("start_time");
-        writer.String(query_request.start_time().c_str());
+        writer.String(util::time_point_to_iso_string(query_request.start_time()).c_str());
 
         writer.Key("end_time");
-        writer.String(query_request.end_time().c_str());
+        writer.String(util::time_point_to_iso_string(query_request.end_time()).c_str());
 
         writer.EndObject();
         return buffer.GetString();

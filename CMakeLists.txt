@@ -22,6 +22,7 @@ add_library(dunderdb_sdk_cpp STATIC
         src/reply.cpp
         src/query_request.cpp
         src/client.cpp
+        include/dunderdb/util.h
 )
 
 target_include_directories(dunderdb_sdk_cpp PUBLIC
@@ -43,5 +44,13 @@ add_executable(insert_test
 )
 
 target_link_libraries(insert_test PRIVATE
+        dunderdb_sdk_cpp
+)
+
+add_executable(query_test
+        tests/query_test.cpp
+)
+
+target_link_libraries(query_test PRIVATE
         dunderdb_sdk_cpp
 )
