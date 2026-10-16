@@ -125,6 +125,55 @@ namespace dunderdb
         return reply_obj;
     }
 
+    Reply Client::create_schema(const Schema &schema) {
+        const std::string json = Client::schema_to_json("new", schema);
+        return this->send_ddl_request(schema.service_name(), std::move(json));
+    }
+
+    Reply Client::update_schema(const Schema &schema) {
+        const std::string json = Client::schema_to_json("update", schema);
+        return this->send_ddl_request(schema.service_name(), std::move(json));;
+    }
+
+    Reply Client::drop_schema(const std::string& service_name) {
+        std::string json = Client::delete_schema_to_json(service_name);
+         return this->send_ddl_request(service_name, std::move(json));
+    }
+
+    Reply Client::send_ddl_request(std::string service_name, std::string json_message) {
+        if (!connected_) {
+            throw std::runtime_error("Client is not connected");
+        }
+
+        constexpr uint8_t request_type = 2;
+
+        insert_socket_.send(
+            zmq::buffer(std::to_string(request_type)),
+            zmq::send_flags::sndmore
+        );
+
+        insert_socket_.send(
+            zmq::buffer(std::move(service_name)),
+            zmq::send_flags::sndmore
+        );
+
+        insert_socket_.send(
+            zmq::buffer(std::move(json_message)),
+            zmq::send_flags::none
+        );
+
+        zmq::message_t reply;
+        auto _ = insert_socket_.recv(reply);
+
+        const std::string json_reply(
+            static_cast<char*>(reply.data()),
+            reply.size());
+
+        Reply reply_obj = Client::json_to_reply(json_reply);
+        reply_obj.add_raw_json(std::move(json_reply));
+        return reply_obj;
+    }
+
     std::string Client::message_to_json(const Message& message) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -230,6 +279,63 @@ namespace dunderdb
 
         writer.Key("end_time");
         writer.String(util::time_point_to_iso_string(query_request.end_time()).c_str());
+
+        writer.EndObject();
+        return buffer.GetString();
+    }
+
+    std::string Client::schema_to_json(const std::string& change_type, const Schema &schema) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        writer.StartObject();
+
+        writer.Key("change_type");
+        writer.String(change_type.c_str());
+
+        writer.Key("service_name");
+        writer.String(schema.service_name().c_str());
+
+        writer.Key("columns");
+        writer.StartArray();
+
+        for (const auto& column : schema.columns()) {
+            writer.StartObject();
+            writer.Key("name");
+            writer.String(column.name.c_str());
+
+            writer.Key("type");
+            if (column.type == FieldType::NUMBER) {
+                writer.String("number");
+            }
+            else {
+                writer.String("string");
+            }
+
+            if (column.type == FieldType::STRING) {
+                writer.Key("max_characters");
+                writer.Uint(column.max_length.value());
+            }
+
+            writer.Key("nullable");
+            writer.Bool(column.nullable);
+            writer.EndObject();
+        }
+        writer.EndArray();
+        writer.EndObject();
+
+        return buffer.GetString();
+    }
+
+    std::string Client::delete_schema_to_json(const std::string &service_name) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        writer.StartObject();
+
+        writer.Key("change_type");
+        writer.String("drop");
+
+        writer.Key("service_name");
+        writer.String(service_name.c_str());
 
         writer.EndObject();
         return buffer.GetString();

@@ -13,7 +13,7 @@ int main() {
 
     std::cout<<dunderdb::util::time_point_to_iso_string(now)<<", "<<dunderdb::util::time_point_to_iso_string(before_5_mins)<<std::endl;
 
-    dunderdb::QueryRequest request("sales", before_5_mins, now);
+    const dunderdb::QueryRequest request("sales", before_5_mins, now);
     dunderdb::Reply reply = client.query(request);
     std::cout<<reply.status()<<std::endl;
     std::cout<<reply.reply_message()<<std::endl;
